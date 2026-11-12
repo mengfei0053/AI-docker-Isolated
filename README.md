@@ -18,6 +18,8 @@
 | Node.js 24 / npm / Git | 官方 Node 镜像与 Ubuntu 软件源 | 提供命令行开发环境 |
 | Cockpit Tools 1.3.81 | 官方 Linux deb，验证 SHA-256 | AI 账号管理桌面工具，非 Cockpit 服务器面板 |
 | Agent Board | 官方源码 tag 1.0.2 对应的固定提交 + pnpm 依赖 | 需要自行配置 PostgreSQL 后启动 |
+| Antigravity IDE 2.6.0 | Google 官方 Linux x64 tarball，固定 SHA-256 | 桌面 IDE，命令 `antigravity-ide` |
+| Antigravity CLI 1.5.6 | 官方独立 CLI，验证 manifest SHA-512 | 终端命令 `agy`，需自行登录 |
 
 以上是 Dockerfile 的安装目标，不代表已通过图形启动或账号登录验证。
 不自动添加 `--no-sandbox`；遇到浏览器沙箱报错需要单独诊断。
@@ -141,6 +143,21 @@ agent-board
 本镜像已提供 Claude/Codex；Pi、Cursor 等其他 runner 需自行安装和认证。
 看板不是仅静态网页：缺少 DATABASE_URL 时启动器明确报错，不代表已经可用。
 
+## Antigravity IDE 与 CLI
+
+本项目安装完整代码编辑器 **Antigravity IDE** 和独立终端 Agent **agy**，
+不额外安装官网的 Antigravity App。IDE 下载包来自官方下载页，CLI 来自官方更新清单。
+IDE 的 SHA-256 为下载后固定的完整性校验值；CLI SHA-512 与官方 manifest 比对。
+
+- 桌面双击 Antigravity IDE，或执行 `antigravity-ide /projects`。
+- `antigravity` 是 IDE 命令的兼容别名，方便查找旧命令的集成工具。
+- 在项目目录执行 `agy`，不是用 IDE 的文件启动命令冒充 CLI。
+- 两者需要自行认证；安装成功不代表账号、订阅或地区权限可用。
+- IDE 默认配置/扩展存放在 `/config/.config/Antigravity IDE` 和
+  `/config/.antigravity-ide`；CLI 默认 HOME 为 `/config`，其用户配置随主目录持久化。
+- `/opt/antigravity-ide` 与 `/usr/local/bin/agy` 为镜像内容；更新建议修改版本并重建，
+  不自动加 `--no-sandbox` 或运行官方安装器的登录/后台更新步骤。
+
 ## 备份用户数据
 
 先保存工作，再执行 `bash scripts/backup-config.sh`。
@@ -160,3 +177,5 @@ agent-board
 - [Codex](https://github.com/openai/codex)
 - [Cockpit Tools 1.3.81](https://github.com/jlcodes99/cockpit-tools/releases/tag/v1.3.81)
 - [Agent Board 1.0.2](https://github.com/mengfei0053/agent-board/tree/1.0.2)
+- [Antigravity 官方下载](https://antigravity.google/download/)
+- [Antigravity 官方入门与 CLI 安装](https://antigravity.google/docs/getting-started/)

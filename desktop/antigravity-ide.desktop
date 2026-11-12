@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Antigravity IDE
+Comment=Google Antigravity development environment
+Exec=/usr/local/bin/antigravity-ide %U
+Icon=/opt/antigravity-ide/resources/app/resources/linux/code.png
+Terminal=false
+StartupNotify=true
+Categories=Development;IDE;
+MimeType=x-scheme-handler/antigravity-ide;

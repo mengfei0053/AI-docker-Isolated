@@ -56,4 +56,13 @@ RUN bash /tmp/install-extra-apps.sh && rm /tmp/install-extra-apps.sh
 COPY --chmod=755 scripts/start-agent-board.sh /usr/local/bin/agent-board
 COPY --chmod=644 desktop/agent-board.desktop /usr/share/applications/agent-board.desktop
 
+# Official Google Antigravity IDE 2.6.0 and standalone agy CLI 1.5.6.
+ARG ANTIGRAVITY_IDE_URL=https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/2.6.0-5526304964083712/linux-x64/Antigravity%20IDE.tar.gz
+ARG ANTIGRAVITY_IDE_SHA256=b060a7c7679103b2b619752f8ee7a3088dd241a7d207d4311974b56ea6f94356
+ARG ANTIGRAVITY_CLI_URL=https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.6-6212266538958848/linux-x64/cli_linux_x64.tar.gz
+ARG ANTIGRAVITY_CLI_SHA512=0c67824908caf9cc3156699802b8097f2fd02c4608ae9293c9aa7f17e1bcd342c4b9c2e158388253a37804ef6bd9c6b1d25cfaca3c07bbb7587378fc91839bb4
+COPY scripts/install-antigravity.sh /tmp/install-antigravity.sh
+RUN bash /tmp/install-antigravity.sh && rm /tmp/install-antigravity.sh
+COPY --chmod=644 desktop/antigravity-ide.desktop /usr/share/applications/antigravity-ide.desktop
+
 EXPOSE 3000 3001

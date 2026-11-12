@@ -5,7 +5,8 @@ DESKTOP_DIR="/config/Desktop"
 mkdir -p "$DESKTOP_DIR"
 
 for app in adspower_global.desktop virtual-browser-client.desktop \
-    ant-browser.desktop 'Cockpit Tools.desktop' agent-board.desktop; do
+    ant-browser.desktop 'Cockpit Tools.desktop' agent-board.desktop \
+    antigravity-ide.desktop; do
     src="/usr/share/applications/$app"
     dst="$DESKTOP_DIR/$app"
     if [[ -f "$src" ]]; then
