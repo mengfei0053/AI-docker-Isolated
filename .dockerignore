@@ -1,0 +1,15 @@
+config/
+workspace/
+backups/
+.git/
+.env
+.env.*
+*.tar
+*.tar.gz
+*.tar.zst
+*.zip
+*.deb
+*.AppImage
+*.log
+**/__pycache__/
+**/*.pyc

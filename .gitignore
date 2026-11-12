@@ -1,0 +1,19 @@
+# User profiles, browser cookies, CLI credentials and mounted workspaces
+/config/
+/workspace/
+/backups/
+.env
+.env.*
+!.env.example
+
+# Backups and runtime artifacts
+*.tar
+*.tar.gz
+*.tar.zst
+*.zip
+*.deb
+*.AppImage
+*.log
+__pycache__/
+*.py[cod]
+.DS_Store
