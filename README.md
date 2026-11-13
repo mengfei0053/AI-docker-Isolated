@@ -55,6 +55,57 @@ docker compose up -d --build
 只在可信网络使用，公网访问前务必添加认证和访问限制。
 Webtop 桌面具有容器内管理权限，不适合运行恶意软件或不可信用户代码。
 
+## 查看容器 IP 与公网出口
+
+以下命令在宿主机执行。桌面容器 `ai-docker-isolated` 使用
+`network_mode: service:proxy-gateway`，与 `webtop-gateway` 共享网络命名空间，
+没有独立的 Docker 网桥 IP。因此直接 inspect 桌面容器可能看不到 IP，应查询网关：
+
+```bash
+# 查看网关在各个 Docker 网络中的内网 IPv4 地址
+docker inspect --format '{{range $name, $net := .NetworkSettings.Networks}}{{printf "%s: %s\n" $name $net.IPAddress}}{{end}}' webtop-gateway
+
+# 从桌面容器内查看实际网卡地址和路由
+docker exec ai-docker-isolated ip -4 addr show dev eth0
+docker exec ai-docker-isolated ip -4 route
+
+# 使用 Compose 服务名查询（在项目目录执行）
+docker compose exec -T webtop ip -4 addr show dev eth0
+```
+
+如果项目目录改过名，Compose 自动推导的项目名可能与运行中的容器不同，导致提示
+`service "webtop" is not running`。先查询实际项目名，再使用相同的 `-p` 参数：
+
+```bash
+docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' ai-docker-isolated
+# 例如查询结果为 docker-webtop 时：
+docker compose -p docker-webtop exec -T webtop ip -4 addr show dev eth0
+docker compose -p docker-webtop port proxy-gateway 3001
+```
+
+`eth0` 地址是 Docker 内网地址，容器或网络重建后可能变化，不应写死。
+`tun0` 的 `198.18.0.1` 是透明代理的虚拟接口地址，不是公网出口。
+
+查看网站实际看到的公网出口 IP：
+
+```bash
+# --noproxy '*' 跳过应用层代理变量，连接仍受网关透明代理控制
+docker exec ai-docker-isolated curl -fsS --max-time 20 --noproxy '*' https://api.ipify.org
+```
+
+查看宿主机地址及桌面发布端口：
+
+```bash
+hostname -I
+docker compose port proxy-gateway 3001
+```
+
+在宿主机浏览器打开 `https://127.0.0.1:3001`；其他电脑访问
+`https://<宿主机可达的局域网IP>:3001`，不是容器内网 IP 或代理公网出口 IP。
+`hostname -I` 可能同时列出 Docker、VPN 等接口地址，需选择客户端可达的宿主机地址。
+若端口查询返回 `0.0.0.0:3001`，表示监听所有 IPv4 网卡，并非可直接访问的目标 IP。
+公网出口查询结果只说明该次请求的出口，不等于完整的防泄漏验证。
+
 ## 构建时联网
 
 运行时透明代理不会作用于镜像拉取和 Docker 构建步骤。
