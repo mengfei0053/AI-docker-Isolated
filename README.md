@@ -15,15 +15,17 @@
 | VirtualBrowser 2.4.0 | 官方 Release deb | 需要自行登录或完成产品配置 |
 | Claude Code | 官方原生安装脚本 stable 分支 | `claude`，需自行认证 |
 | Codex CLI 0.167.0 | 官方 npm 包 `@openai/codex` | `codex`，需自行认证 |
+| Pi Agent 1.5.2 | 官方 npm 包 `@earendil-works/pi-coding-agent` | `pi`，需自行认证 |
 | Node.js 24 / npm / Git | 官方 Node 镜像与 Ubuntu 软件源 | 提供命令行开发环境 |
 | Cockpit Tools 1.3.81 | 官方 Linux deb，验证 SHA-256 | AI 账号管理桌面工具，非 Cockpit 服务器面板 |
-| Agent Board | 官方源码 tag 1.0.2 对应的固定提交 + pnpm 依赖 | 需要自行配置 PostgreSQL 后启动 |
+| Agent Board | 官方源码固定提交 `c2a4e7e` + pnpm 依赖 | 默认 SQLite，也可显式配置 PostgreSQL |
 | Antigravity IDE 2.6.0 | Google 官方 Linux x64 tarball，固定 SHA-256 | 桌面 IDE，命令 `antigravity-ide` |
 | Antigravity CLI 1.5.6 | 官方独立 CLI，验证 manifest SHA-512 | 终端命令 `agy`，需自行登录 |
+| Magpie 0.1.3962 | 官方 Linux GUI 二进制，验证 SHA-256 | 同时提供 CLI、TUI 和 Web 模式 |
 
 以上是 Dockerfile 的安装目标，不代表已通过图形启动或账号登录验证。
 不自动添加 `--no-sandbox`；遇到浏览器沙箱报错需要单独诊断。
-Pi 没有预装，需自行安装。
+Pi 使用官方 npm 安装方式并禁用依赖安装脚本，Node.js 24 满足其运行要求。
 
 ## 启动
 
@@ -90,10 +92,10 @@ SOCKS 服务端是否再按规则直连也由宿主机代理配置决定。
 请在自己的宿主机和代理配置上执行动态测试，不应假设不同部署都具有相同结果。
 
 ```bash
-docker exec webtop cat /etc/os-release
-docker exec -u abc webtop claude --version
-docker exec -u abc webtop codex --version
-docker exec webtop curl --max-time 20 --noproxy '*' https://api.ipify.org
+docker exec ai-docker-isolated cat /etc/os-release
+docker exec -u abc ai-docker-isolated claude --version
+docker exec -u abc ai-docker-isolated codex --version
+docker exec ai-docker-isolated curl --max-time 20 --noproxy '*' https://api.ipify.org
 ```
 
 出口 IP 一致只验证该次 HTTP 请求，不证明 DNS、UDP、IPv6 或代理断开时无泄漏。
@@ -126,7 +128,7 @@ Cockpit Tools 从应用菜单或桌面启动，命令为 `cockpit-tools`。
 
 Agent Board 安装在 `/opt/agent-board`，命令为 `agent-board`，桌面提供服务器启动图标。
 没有创建或修改宿主机数据库，也没有复制宿主机看板的账号、数据库凭据或数据。
-先自行准备 PostgreSQL，再创建只有本人可读的配置文件：
+直接运行 `agent-board` 即可使用 SQLite，数据库默认为 `/config/.local/share/agent-board/agent-board.db`。如需 PostgreSQL，先准备独立数据库，再创建只有本人可读的配置文件：
 
 ```bash
 mkdir -p ~/.config/agent-board
@@ -138,10 +140,10 @@ agent-board
 ```
 
 该文件作为可信 shell 配置加载，请勿放入不可信命令。
-默认仅监听容器内 `127.0.0.1:8791`，运行后在容器浏览器打开该地址。
-默认文件数据位于 `/config/.local/share/agent-board`，数据库内容须另行备份。
-本镜像已提供 Claude/Codex；Pi、Cursor 等其他 runner 需自行安装和认证。
-看板不是仅静态网页：缺少 DATABASE_URL 时启动器明确报错，不代表已经可用。
+默认仅监听容器内 `127.0.0.1:8791`，运行后在容器浏览器打开该地址。启动器默认设置 `AGENT_BOARD_ALLOWED_ROOTS=/projects`，允许经 `/config/projects` 符号链接访问的挂载项目；可在可信配置中显式覆盖。
+默认文件数据位于 `/config/.local/share/agent-board`。SQLite 备份请停止服务后复制数据库文件；PostgreSQL 内容须另行备份。切换 `DATABASE_URL` 不会自动迁移数据，PostgreSQL 连接失败也不会回退 SQLite。
+本镜像已提供 Claude/Codex/Pi；各 CLI 需自行认证，Cursor 等其他 runner 需自行安装。
+启动器直接使用 Node/tsx，不在启动时下载 pnpm；看板不是仅静态网页，需保持服务进程运行。
 
 ## Antigravity IDE 与 CLI
 
@@ -157,6 +159,28 @@ IDE 的 SHA-256 为下载后固定的完整性校验值；CLI SHA-512 与官方 
   `/config/.antigravity-ide`；CLI 默认 HOME 为 `/config`，其用户配置随主目录持久化。
 - `/opt/antigravity-ide` 与 `/usr/local/bin/agy` 为镜像内容；更新建议修改版本并重建，
   不自动加 `--no-sandbox` 或运行官方安装器的登录/后台更新步骤。
+
+## Pi Agent
+
+在桌面终端中进入项目后执行 `pi`，例如 `cd /projects/你的项目 && pi`。
+使用 `/login` 配置支持的账号或 API 凭据；不复制宿主机的 Pi 登录和扩展。
+默认用户 `abc` 的 HOME 为 `/config`，Pi 全局配置、认证、会话和扩展目录
+`~/.pi/agent` 对应 `/config/.pi/agent`，随主目录持久化并纳入 config 备份。
+不要使用 `sudo pi`，否则配置可能写入未持久化的 `/root`。
+项目内 `.pi` 配置保存在项目目录，是否持久化取决于项目位于 `/projects` 或 `/config`。
+
+## Magpie
+
+桌面图标或终端 `magpie` 打开桌面应用；`magpie tui` 使用终端界面，
+`magpie --help` 查看全部命令。同一官方 GUI 程序已包含这些入口，不需要另装 CLI 包。
+Linux GUI 使用 WebKitGTK 4.1（当前 Webtop 依赖中已提供）。
+
+默认设置、提供商密钥和配置档位于 `~/.config/magpie`，即持久化的
+`/config/.config/magpie`。不要将该目录上传到公开仓库。
+本项目不自动启动 Magpie，不导入提供商、不修改 Claude/Codex 的现有认证和模型配置，
+也不对宿主机额外开放 Magpie 的网关或 Web 管理端口。
+使用 Magpie 切换模型时可能改写相关 Agent 配置，建议先备份，并避免与 Cockpit Tools
+同时修改同一个 Agent 的配置。
 
 ## 备份用户数据
 
@@ -176,6 +200,8 @@ IDE 的 SHA-256 为下载后固定的完整性校验值；CLI SHA-512 与官方 
 - [Claude Code](https://github.com/anthropics/claude-code)
 - [Codex](https://github.com/openai/codex)
 - [Cockpit Tools 1.3.81](https://github.com/jlcodes99/cockpit-tools/releases/tag/v1.3.81)
-- [Agent Board 1.0.2](https://github.com/mengfei0053/agent-board/tree/1.0.2)
+- [Agent Board 固定源码](https://github.com/mengfei0053/agent-board/tree/c2a4e7e1e233db32ef0395875a794785d6eda503)
 - [Antigravity 官方下载](https://antigravity.google/download/)
 - [Antigravity 官方入门与 CLI 安装](https://antigravity.google/docs/getting-started/)
+- [Magpie 官方项目](https://github.com/yetone/magpie)
+- [Magpie 0.1.3962 官方安装包](https://github.com/yetone/magpie-releases/releases/tag/v0.1.3962)

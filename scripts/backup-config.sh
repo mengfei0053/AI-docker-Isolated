@@ -8,7 +8,11 @@ mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
 ARCHIVE="$BACKUP_DIR/config-$(date +%Y%m%d-%H%M%S).tar.zst"
 PARTIAL="$ARCHIVE.partial"
-DESKTOP_RUNNING=$(docker inspect --format '{{.State.Running}}' webtop)
+DESKTOP_ID=$(docker compose ps -aq webtop)
+DESKTOP_RUNNING=false
+if [[ -n "$DESKTOP_ID" ]]; then
+    DESKTOP_RUNNING=$(docker inspect --format '{{.State.Running}}' "$DESKTOP_ID")
+fi
 resume() {
     if [[ "$DESKTOP_RUNNING" == true ]]; then
         docker compose start webtop

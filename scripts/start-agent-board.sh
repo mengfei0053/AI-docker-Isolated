@@ -8,16 +8,14 @@ if [[ -f "$CONFIG_FILE" ]]; then
     source "$CONFIG_FILE"
     set +a
 fi
-if [[ -z "${DATABASE_URL:-}" ]]; then
-    printf 'Agent Board requires PostgreSQL. Set DATABASE_URL in %s\n' "$CONFIG_FILE" >&2
-    printf 'Example: postgresql://USER:PASSWORD@HOST:5432/agent_board\n' >&2
-    printf 'This launcher has not created or modified any database.\n' >&2
-    exit 1
-fi
 export DATA_DIR="${DATA_DIR:-$HOME/.local/share/agent-board}"
 export HOST="${HOST:-127.0.0.1}"
 export PORT="${PORT:-8791}"
+# /config/projects is a symlink to the mounted /projects tree.
+# Explicitly allow its real path so workspace/task validation accepts it.
+export AGENT_BOARD_ALLOWED_ROOTS="${AGENT_BOARD_ALLOWED_ROOTS:-/projects}"
 mkdir -p "$DATA_DIR"
 cd /opt/agent-board
 printf 'Agent Board starting on http://%s:%s (Ctrl+C to stop)\n' "$HOST" "$PORT"
-exec pnpm start
+# Avoid runtime package-manager downloads; dependencies are installed in the image.
+exec node --import tsx src/server.ts

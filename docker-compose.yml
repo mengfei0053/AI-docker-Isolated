@@ -38,7 +38,7 @@ services:
       context: .
       dockerfile: Dockerfile
     image: local/webtop:us-west
-    container_name: webtop
+    container_name: ai-docker-isolated
     network_mode: "service:proxy-gateway"
     depends_on:
       proxy-gateway:

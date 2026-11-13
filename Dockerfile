@@ -50,7 +50,7 @@ COPY --chmod=644 policies/webrtc.json /etc/opt/chrome/policies/managed/webrtc.js
 # Additional applications are installed in a late layer to preserve build cache.
 ARG COCKPIT_TOOLS_URL=https://github.com/jlcodes99/cockpit-tools/releases/download/v1.3.81/Cockpit.Tools_1.3.81_amd64.deb
 ARG COCKPIT_TOOLS_SHA256=105cf5135d27bd79e9f9ea808a00a0cd7b82c7144c9696bdf550ae8d9137909b
-ARG AGENT_BOARD_REF=c63a9e9bf85a7e40a688891b0ac659dc225d9bec
+ARG AGENT_BOARD_REF=c2a4e7e1e233db32ef0395875a794785d6eda503
 COPY scripts/install-extra-apps.sh /tmp/install-extra-apps.sh
 RUN bash /tmp/install-extra-apps.sh && rm /tmp/install-extra-apps.sh
 COPY --chmod=755 scripts/start-agent-board.sh /usr/local/bin/agent-board
@@ -64,5 +64,18 @@ ARG ANTIGRAVITY_CLI_SHA512=0c67824908caf9cc3156699802b8097f2fd02c4608ae9293c9aa7
 COPY scripts/install-antigravity.sh /tmp/install-antigravity.sh
 RUN bash /tmp/install-antigravity.sh && rm /tmp/install-antigravity.sh
 COPY --chmod=644 desktop/antigravity-ide.desktop /usr/share/applications/antigravity-ide.desktop
+
+# Magpie official Linux desktop build includes CLI/TUI/web commands.
+ARG MAGPIE_URL=https://github.com/yetone/magpie-releases/releases/download/v0.1.3962/magpie-linux-amd64
+ARG MAGPIE_SHA256=e229850674cebeec9029e0386b42c9bdd53df49eaec7153619b2207f721dde71
+COPY scripts/install-magpie.sh /tmp/install-magpie.sh
+RUN bash /tmp/install-magpie.sh && rm /tmp/install-magpie.sh
+COPY --chmod=644 desktop/magpie.desktop /usr/share/applications/magpie.desktop
+
+# Official Pi CLI; no host credentials or extensions are copied into the image.
+ARG PI_VERSION=1.5.2
+RUN npm install -g --ignore-scripts "@earendil-works/pi-coding-agent@${PI_VERSION}" \
+    && npm cache clean --force \
+    && pi --version
 
 EXPOSE 3000 3001

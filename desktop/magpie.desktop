@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Magpie
+Comment=Manage AI agent models and providers
+Exec=/usr/local/bin/magpie
+Icon=preferences-system
+Terminal=false
+StartupNotify=true
+Categories=Development;
