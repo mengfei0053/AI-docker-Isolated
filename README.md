@@ -177,9 +177,12 @@ Cockpit Tools 从应用菜单或桌面启动，命令为 `cockpit-tools`。
 默认数据在 `~/.cockpit_tools`（即 `/config/.cockpit_tools`），包含敏感账号资料，
 与其管理的 CLI 配置一起保存在持久化主目录中。
 
-Agent Board 安装在 `/opt/agent-board`，命令为 `agent-board`，桌面提供服务器启动图标。
+Agent Board 安装在 `/opt/agent-board`，**容器启动后由 s6 自动以 `abc` 用户启动**，
+进程异常退出后会自动拉起。桌面图标打开 `http://127.0.0.1:8791`，不再启动第二个服务进程。
+不要在自动服务运行时再执行 `agent-board`，否则会发生端口冲突。
 没有创建或修改宿主机数据库，也没有复制宿主机看板的账号、数据库凭据或数据。
-直接运行 `agent-board` 即可使用 SQLite，数据库默认为 `/config/.local/share/agent-board/agent-board.db`。如需 PostgreSQL，先准备独立数据库，再创建只有本人可读的配置文件：
+默认使用 SQLite，数据库为 `/config/.local/share/agent-board/agent-board.db`。
+如需 PostgreSQL，先准备独立数据库，再在容器内创建只有本人可读的配置文件：
 
 ```bash
 mkdir -p ~/.config/agent-board
@@ -187,14 +190,67 @@ chmod 700 ~/.config/agent-board
 # 编辑 ~/.config/agent-board/env，填写自己的数据库连接：
 # DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/agent_board'
 chmod 600 ~/.config/agent-board/env
-agent-board
+# 保存后按下方方法重启服务
 ```
 
 该文件作为可信 shell 配置加载，请勿放入不可信命令。
 默认仅监听容器内 `127.0.0.1:8791`，运行后在容器浏览器打开该地址。启动器默认设置 `AGENT_BOARD_ALLOWED_ROOTS=/projects`，允许经 `/config/projects` 符号链接访问的挂载项目；可在可信配置中显式覆盖。
 默认文件数据位于 `/config/.local/share/agent-board`。SQLite 备份请停止服务后复制数据库文件；PostgreSQL 内容须另行备份。切换 `DATABASE_URL` 不会自动迁移数据，PostgreSQL 连接失败也不会回退 SQLite。
 本镜像已提供 Claude/Codex/Pi；各 CLI 需自行认证，Cursor 等其他 runner 需自行安装。
-启动器直接使用 Node/tsx，不在启动时下载 pnpm；看板不是仅静态网页，需保持服务进程运行。
+启动器直接使用 Node/tsx，不在启动时下载 pnpm；服务日志输出到容器日志。
+
+### 查看状态与重启 Agent Board
+
+以下命令在宿主机运行，不需要重启整个桌面：
+
+```bash
+# 服务状态及本地 HTTP 就绪检查
+docker exec ai-docker-isolated s6-svstat /run/service/svc-agent-board
+docker exec ai-docker-isolated curl -fsS --max-time 10 -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8791/
+
+# 仅重启看板；配置文件在进程重新启动时加载
+docker exec ai-docker-isolated s6-svc -r /run/service/svc-agent-board
+
+# 查看容器日志（包含看板启动日志）
+docker logs --tail 100 ai-docker-isolated
+
+# 手动停止 / 恢复看板（停止状态不跨容器重启保留）
+docker exec ai-docker-isolated s6-svc -d /run/service/svc-agent-board
+docker exec ai-docker-isolated s6-svc -u /run/service/svc-agent-board
+```
+
+重启会中断当前看板连接及可能运行的 Agent 任务，请先保存并等待任务结束。
+默认端口只在容器内可用，宿主机的 `127.0.0.1:8791` 不等于容器的该地址。
+
+### 更新 Agent Board 并应用新镜像
+
+应用源码固定在 Dockerfile 的 `ARG AGENT_BOARD_REF`（Git commit SHA）。
+更新本项目代码不一定更新看板上游；如需升级看板本身，先将该值改为审核过的新提交。
+不要只在容器 `/opt/agent-board` 内修改文件，否则容器替换后会丢失。
+
+```bash
+set -e  # 任一步失败时停止，避免使用旧镜像继续替换容器
+cd /path/to/AI-docker-Isolated
+# 检测已有容器的 Compose 项目名，避免本地目录改名后创建出另一套服务
+export COMPOSE_PROJECT_NAME=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' ai-docker-isolated)
+# 有本地修改时先自行保存或提交；仅快进拉取，冲突时停止
+git pull --ff-only
+# 需要升级看板上游时，在此修改 Dockerfile 的 AGENT_BOARD_REF
+# 保存所有桌面工作后备份：该脚本会短暂停止整个桌面
+bash scripts/backup-config.sh
+# 如构建联网受限，可按“构建时联网”章节增加代理 build-arg
+docker compose build webtop
+docker compose stop -t 60 webtop
+docker compose up -d --no-deps webtop
+# 验证自动启动及就绪；首次初始化可能需等待几秒
+docker exec ai-docker-isolated s6-svstat /run/service/svc-agent-board
+docker exec ai-docker-isolated curl -fsS --retry 10 --retry-connrefused --retry-delay 2 --max-time 10 http://127.0.0.1:8791/ -o /dev/null
+```
+
+无需重建镜像、只需重启整个桌面时执行 `docker restart -t 60 ai-docker-isolated`。
+该操作会断开网页桌面并终止容器内任务；s6 会在启动后自动运行看板。
+更新和重启保留挂载的 `/config` 与 `/projects`；PostgreSQL 数据库仍需单独备份。
+如果修改网关配置并重建了网关，应一并重建桌面，而不是仅 `--no-deps` 更新桌面。
 
 ## Antigravity IDE 与 CLI
 

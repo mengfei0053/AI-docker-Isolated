@@ -1,0 +1,7 @@
+#!/usr/bin/with-contenv bash
+set -euo pipefail
+exec 2>&1
+# Run in the foreground so s6 owns shutdown and crash recovery.
+# init-services has already configured abc's UID/GID and persistent HOME.
+export HOME=/config
+exec s6-setuidgid abc /usr/local/bin/agent-board

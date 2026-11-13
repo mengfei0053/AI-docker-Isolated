@@ -78,4 +78,9 @@ RUN npm install -g --ignore-scripts "@earendil-works/pi-coding-agent@${PI_VERSIO
     && npm cache clean --force \
     && pi --version
 
+# Start the task server as abc after LinuxServer initialization; s6 restarts it.
+COPY services/svc-agent-board/ /etc/s6-overlay/s6-rc.d/svc-agent-board/
+COPY services/user-contents.d/ /etc/s6-overlay/s6-rc.d/user/contents.d/
+RUN chmod 755 /etc/s6-overlay/s6-rc.d/svc-agent-board/run
+
 EXPOSE 3000 3001
