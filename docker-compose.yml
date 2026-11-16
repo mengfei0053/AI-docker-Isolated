@@ -23,6 +23,8 @@ services:
       - "3001:3001"
       # Magpie API gateway; requires client authentication.
       - "3425:3425"
+      # Localhost only; host 8791 may already run another Agent Board.
+      - "127.0.0.1:${AGENT_BOARD_HOST_PORT:-8792}:8791"
     healthcheck:
       test:
         - CMD-SHELL
@@ -61,6 +63,9 @@ services:
       LANGUAGE: en_US:en
       LC_ALL: en_US.UTF-8
       TITLE: Ubuntu Desktop (US-West)
+      # Bind within the shared namespace for the localhost-only host mapping.
+      HOST: "0.0.0.0"
+      PORT: "8791"
     volumes:
       - ./config:/config
       - ${PROJECTS_DIR:-./workspace}:/projects

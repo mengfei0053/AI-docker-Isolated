@@ -1,0 +1,69 @@
+import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { after, before, test } from "node:test";
+import { browseHome, listDirs } from "./fsbrowse.js";
+
+// This suite runs at image build time with a disposable HOME, never live profiles.
+const fixture = mkdtempSync("/var/tmp/agent-board-browse-");
+const projects = join(fixture, "projects");
+const sibling = join(fixture, "projects-other");
+const previousRoots = process.env.AGENT_BOARD_ALLOWED_ROOTS;
+before(() => {
+  mkdirSync(browseHome, { recursive: true });
+  mkdirSync(join(projects, "example"), { recursive: true });
+  mkdirSync(sibling);
+  mkdirSync(join(browseHome, ".hidden"));
+  mkdirSync(join(browseHome, "visible"));
+  writeFileSync(join(browseHome, "file.txt"), "test");
+  symlinkSync(projects, join(browseHome, "projects"));
+  symlinkSync("/etc", join(browseHome, "escape"));
+  symlinkSync(sibling, join(browseHome, "sibling-escape"));
+  symlinkSync(join(fixture, "missing"), join(browseHome, "broken"));
+  symlinkSync(join(browseHome, "file.txt"), join(browseHome, "file-link"));
+  process.env.AGENT_BOARD_ALLOWED_ROOTS = projects;
+});
+after(() => {
+  if (previousRoots === undefined) delete process.env.AGENT_BOARD_ALLOWED_ROOTS;
+  else process.env.AGENT_BOARD_ALLOWED_ROOTS = previousRoots;
+  rmSync(fixture, { recursive: true, force: true });
+});
+
+test("home lists allowed directory links but hides unsafe links and files", () => {
+  const result = listDirs(browseHome);
+  assert.equal(result.parent, null);
+  assert.deepEqual(result.entries, ["projects", "visible"]);
+});
+test("project link resolves to mount root and can return to home", () => {
+  const result = listDirs(join(browseHome, "projects"));
+  assert.equal(result.path, projects);
+  assert.equal(result.parent, browseHome);
+  assert.deepEqual(result.entries, ["example"]);
+});
+test("direct mounted path and children work with consistent parent", () => {
+  assert.equal(listDirs(projects).path, projects);
+  assert.equal(listDirs(join(projects, "example")).parent, projects);
+});
+test("home defaults and tilde expansion work", () => {
+  assert.equal(listDirs("").path, browseHome);
+  assert.equal(listDirs("~").path, browseHome);
+  assert.equal(listDirs("~/visible").parent, browseHome);
+});
+test("outside directories, traversal and root-prefix siblings are rejected", () => {
+  for (const target of ["/etc", "/", sibling, join(projects, ".."), join(browseHome, "escape")]) {
+    assert.throws(() => listDirs(target), /outside allowed roots/);
+  }
+});
+test("files and missing paths are rejected", () => {
+  assert.throws(() => listDirs(join(browseHome, "file.txt")), /not a directory/);
+  assert.throws(() => listDirs(join(browseHome, "broken")), /not found/);
+});
+test("removing mount allowlist immediately rejects its link", () => {
+  delete process.env.AGENT_BOARD_ALLOWED_ROOTS;
+  try {
+    assert.throws(() => listDirs(projects), /outside allowed roots/);
+    assert.ok(!listDirs(browseHome).entries.includes("projects"));
+  } finally {
+    process.env.AGENT_BOARD_ALLOWED_ROOTS = projects;
+  }
+});

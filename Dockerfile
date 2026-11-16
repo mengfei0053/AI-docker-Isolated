@@ -89,4 +89,10 @@ ARG CC_SWITCH_SHA256=749ccced0fb4185148f7917084bb5e230b1adef43313b6e7621d602bd84
 COPY scripts/install-cc-switch.sh /tmp/install-cc-switch.sh
 RUN bash /tmp/install-cc-switch.sh && rm /tmp/install-cc-switch.sh
 
+# Align the directory picker with the task/workspace allowed roots.
+# The patch verifies the pinned upstream source and runs security tests.
+COPY overrides/agent-board/ /tmp/board-browse/
+COPY scripts/patch-agent-board-browse.sh /tmp/patch-agent-board-browse.sh
+RUN bash /tmp/patch-agent-board-browse.sh && rm /tmp/patch-agent-board-browse.sh
+
 EXPOSE 3000 3001

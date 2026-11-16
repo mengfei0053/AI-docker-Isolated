@@ -1,0 +1,50 @@
+import { readdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { homedir } from "node:os";
+import { resolveAllowedDirectory } from "./paths.js";
+
+const home = homedir();
+
+function safeResolve(input: string): string {
+  const raw = (input || home).trim() || home;
+  // Expand only ~ and ~/..., not an unrelated ~username path.
+  const expanded = raw === "~" ? home : raw.startsWith("~/")
+    ? join(home, raw.slice(2)) : raw;
+  // Share the same realpath and directory allowlist as workspace/task creation.
+  return resolveAllowedDirectory(resolve(expanded), "path");
+}
+
+export function listDirs(pathInput: string) {
+  const path = safeResolve(pathInput);
+  const entries = readdirSync(path, { withFileTypes: true })
+    .filter((entry) => {
+      if (entry.name.startsWith(".")) return false;
+      if (!entry.isDirectory() && !entry.isSymbolicLink()) return false;
+      try {
+        // Follow directory links only when their final target is allowed.
+        // Broken links, file links, and links outside the roots are hidden.
+        safeResolve(join(path, entry.name));
+        return true;
+      } catch {
+        return false;
+      }
+    })
+    .map((entry) => entry.name)
+    .sort((a, b) => a.localeCompare(b));
+
+  const homePath = safeResolve(home);
+  let parent: string | null = null;
+  if (path !== homePath) {
+    const candidate = dirname(path);
+    try {
+      // Do not offer the parent when it crosses a configured root boundary.
+      parent = candidate === path ? homePath : safeResolve(candidate);
+    } catch {
+      // Return from a separate mounted root to the home picker, not to /.
+      parent = homePath;
+    }
+  }
+  return { path, parent, entries };
+}
+
+export { home as browseHome };

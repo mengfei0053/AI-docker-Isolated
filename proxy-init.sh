@@ -6,8 +6,8 @@ iptables -P OUTPUT DROP
 iptables -F OUTPUT
 iptables -A OUTPUT -d 127.0.0.11/32 -j REJECT
 iptables -A OUTPUT -o lo -j ACCEPT
-# Accept responses to desktop/Magpie clients, not new outbound connections.
-iptables -A OUTPUT -p tcp -m multiport --sports 3000,3001,3425 \
+# Accept responses to desktop/Magpie/board clients, not new outbound connections.
+iptables -A OUTPUT -p tcp -m multiport --sports 3000,3001,3425,8791 \
     -m conntrack --ctstate ESTABLISHED -j ACCEPT
 [[ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6)" == 1 ]]
 

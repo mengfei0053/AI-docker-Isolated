@@ -195,7 +195,20 @@ chmod 600 ~/.config/agent-board/env
 ```
 
 该文件作为可信 shell 配置加载，请勿放入不可信命令。
-默认仅监听容器内 `127.0.0.1:8791`，运行后在容器浏览器打开该地址。启动器默认设置 `AGENT_BOARD_ALLOWED_ROOTS=/projects`，允许经 `/config/projects` 符号链接访问的挂载项目；可在可信配置中显式覆盖。
+Compose 将服务设为监听共享网络内的 `0.0.0.0:8791`，容器浏览器访问
+`http://127.0.0.1:8791`；宿主机浏览器访问 **`http://127.0.0.1:8792`**。
+端口由网关发布为 `127.0.0.1:${AGENT_BOARD_HOST_PORT:-8792}:8791`，默认不向局域网开放；
+宿主机 `8791` 可继续运行其他服务。需要换宿主机端口时在项目 `.env` 设置
+`AGENT_BOARD_HOST_PORT`，再重建网关和桌面。不要为远程访问随意开放能执行 Agent 任务的看板。
+用户配置文件中的 `HOST`/`PORT` 会覆盖环境默认值；自定义时需与映射相符。
+启动器默认设置 `AGENT_BOARD_ALLOWED_ROOTS=/projects`，允许经 `/config/projects` 符号链接
+访问的挂载项目；可在可信配置中显式覆盖。
+目录选择器已在镜像构建时修复为使用相同白名单：在 `/config` 下会显示 `projects` 链接，
+进入后路径规范化为 `/projects`；挂载根的“上一级”返回用户主目录，不开放系统根目录。
+仅列出允许根范围内的真实目录与目录链接，隐藏越界/失效/文件链接及隐藏目录。
+白名单沿用工作区规则，默认还包含用户 HOME 和临时目录，不是全盘浏览权限。
+该修复位于 `overrides/agent-board`，应用前检查上游 `fsbrowse.ts` 的 SHA-256 并运行测试；
+升级 `AGENT_BOARD_REF` 时若上游代码已变更，构建会停止，需审核或移除此覆盖，避免静默覆盖新规则。
 默认文件数据位于 `/config/.local/share/agent-board`。SQLite 备份请停止服务后复制数据库文件；PostgreSQL 内容须另行备份。切换 `DATABASE_URL` 不会自动迁移数据，PostgreSQL 连接失败也不会回退 SQLite。
 本镜像已提供 Claude/Codex/Pi；各 CLI 需自行认证，Cursor 等其他 runner 需自行安装。
 启动器直接使用 Node/tsx，不在启动时下载 pnpm；服务日志输出到容器日志。
@@ -221,7 +234,8 @@ docker exec ai-docker-isolated s6-svc -u /run/service/svc-agent-board
 ```
 
 重启会中断当前看板连接及可能运行的 Agent 任务，请先保存并等待任务结束。
-默认端口只在容器内可用，宿主机的 `127.0.0.1:8791` 不等于容器的该地址。
+宿主机验证：`curl -fsS http://127.0.0.1:8792/ -o /dev/null`。
+宿主机的 `127.0.0.1:8791` 可能属于另一个看板，不要与本容器混淆。
 
 ### 更新 Agent Board 并应用新镜像
 
