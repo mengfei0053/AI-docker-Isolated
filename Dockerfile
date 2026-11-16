@@ -66,8 +66,8 @@ RUN bash /tmp/install-antigravity.sh && rm /tmp/install-antigravity.sh
 COPY --chmod=644 desktop/antigravity-ide.desktop /usr/share/applications/antigravity-ide.desktop
 
 # Magpie official Linux desktop build includes CLI/TUI/web commands.
-ARG MAGPIE_URL=https://github.com/yetone/magpie-releases/releases/download/v0.1.3962/magpie-linux-amd64
-ARG MAGPIE_SHA256=e229850674cebeec9029e0386b42c9bdd53df49eaec7153619b2207f721dde71
+ARG MAGPIE_URL=https://github.com/yetone/magpie-releases/releases/download/v0.1.4284/magpie-linux-amd64
+ARG MAGPIE_SHA256=d6130476abfeaab17454efc668207a2f8f0bd6eefac1297d292d8d7c90d0741e
 COPY scripts/install-magpie.sh /tmp/install-magpie.sh
 RUN bash /tmp/install-magpie.sh && rm /tmp/install-magpie.sh
 COPY --chmod=644 desktop/magpie.desktop /usr/share/applications/magpie.desktop
@@ -82,5 +82,11 @@ RUN npm install -g --ignore-scripts "@earendil-works/pi-coding-agent@${PI_VERSIO
 COPY services/svc-agent-board/ /etc/s6-overlay/s6-rc.d/svc-agent-board/
 COPY services/user-contents.d/ /etc/s6-overlay/s6-rc.d/user/contents.d/
 RUN chmod 755 /etc/s6-overlay/s6-rc.d/svc-agent-board/run
+
+# Official CC Switch GUI; user settings remain in the persistent HOME.
+ARG CC_SWITCH_URL=https://github.com/farion1231/cc-switch/releases/download/v4.0.31/CC-Switch-v4.0.31-Linux-x86_64.deb
+ARG CC_SWITCH_SHA256=749ccced0fb4185148f7917084bb5e230b1adef43313b6e7621d602bd840a7b3
+COPY scripts/install-cc-switch.sh /tmp/install-cc-switch.sh
+RUN bash /tmp/install-cc-switch.sh && rm /tmp/install-cc-switch.sh
 
 EXPOSE 3000 3001

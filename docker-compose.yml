@@ -21,6 +21,8 @@ services:
     ports:
       - "3000:3000"
       - "3001:3001"
+      # Magpie API gateway; requires client authentication.
+      - "3425:3425"
     healthcheck:
       test:
         - CMD-SHELL

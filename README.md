@@ -18,10 +18,11 @@
 | Pi Agent 1.5.2 | 官方 npm 包 `@earendil-works/pi-coding-agent` | `pi`，需自行认证 |
 | Node.js 24 / npm / Git | 官方 Node 镜像与 Ubuntu 软件源 | 提供命令行开发环境 |
 | Cockpit Tools 1.3.81 | 官方 Linux deb，验证 SHA-256 | AI 账号管理桌面工具，非 Cockpit 服务器面板 |
+| CC Switch 4.0.31 | 官方 Linux deb，验证发布资产 SHA-256 | 桌面配置管理工具，命令 `cc-switch` |
 | Agent Board | 官方源码固定提交 `c2a4e7e` + pnpm 依赖 | 默认 SQLite，也可显式配置 PostgreSQL |
 | Antigravity IDE 2.6.0 | Google 官方 Linux x64 tarball，固定 SHA-256 | 桌面 IDE，命令 `antigravity-ide` |
 | Antigravity CLI 1.5.6 | 官方独立 CLI，验证 manifest SHA-512 | 终端命令 `agy`，需自行登录 |
-| Magpie 0.1.3962 | 官方 Linux GUI 二进制，验证 SHA-256 | 同时提供 CLI、TUI 和 Web 模式 |
+| Magpie 0.1.4284 | 官方 Linux GUI 二进制，验证 SHA-256 | 同时提供 CLI、TUI 和 Web 模式 |
 
 以上是 Dockerfile 的安装目标，不代表已通过图形启动或账号登录验证。
 不自动添加 `--no-sandbox`；遇到浏览器沙箱报错需要单独诊断。
@@ -284,10 +285,27 @@ Linux GUI 使用 WebKitGTK 4.1（当前 Webtop 依赖中已提供）。
 
 默认设置、提供商密钥和配置档位于 `~/.config/magpie`，即持久化的
 `/config/.config/magpie`。不要将该目录上传到公开仓库。
-本项目不自动启动 Magpie，不导入提供商、不修改 Claude/Codex 的现有认证和模型配置，
-也不对宿主机额外开放 Magpie 的网关或 Web 管理端口。
+本项目不自动启动 Magpie，不导入提供商、不修改 Claude/Codex 的现有认证和模型配置。
+代理网关服务已发布 TCP `3425`：Magpie 运行且监听 `0.0.0.0:3425` 时，
+宿主机访问 `http://127.0.0.1:3425`，局域网客户端访问
+`http://<宿主机局域网IP>:3425`（OpenAI 兼容客户端按需加 `/v1`）。
+请在 Magpie 中保持认证开启，客户端使用其配置的 API Key；401 仅表示服务可达但未认证。
+端口发布到所有宿主机接口，HTTP 未加密，仅用于可信局域网；不要转发到公网，
+跨不可信网络请使用 VPN 或 HTTPS，必要时在宿主机限制来源地址。
+这不发布 Web 管理端口 `3430`。容器重启后需重新打开 Magpie，
+或在容器终端运行 `magpie serve`（只运行网关；前台进程退出后服务停止）。
 使用 Magpie 切换模型时可能改写相关 Agent 配置，建议先备份，并避免与 Cockpit Tools
 同时修改同一个 Agent 的配置。
+
+## CC Switch
+
+从桌面图标打开 **CC Switch**，或以 `abc` 用户在终端执行 `cc-switch`。
+官方 Linux DEB 安装 GTK/WebKitGTK 依赖，不需要 AppImage/FUSE。
+默认设置与 SQLite 数据库在 `~/.cc-switch`，即持久化的 `/config/.cc-switch`，
+包含 `cc-switch.db`、`settings.json` 和备份；随 config 备份保存，不要上传凭据。
+本项目不自动运行 CC Switch，不导入账号、不切换提供商、不启动其本地代理。
+使用 CC Switch、Cockpit Tools 或 Magpie 改写同一个 Agent 的配置前先备份，
+避免多个管理工具同时切换导致配置互相覆盖。仅安装软件不会替你完成认证。
 
 ## 备份用户数据
 
@@ -310,5 +328,6 @@ Linux GUI 使用 WebKitGTK 4.1（当前 Webtop 依赖中已提供）。
 - [Agent Board 固定源码](https://github.com/mengfei0053/agent-board/tree/c2a4e7e1e233db32ef0395875a794785d6eda503)
 - [Antigravity 官方下载](https://antigravity.google/download/)
 - [Antigravity 官方入门与 CLI 安装](https://antigravity.google/docs/getting-started/)
+- [CC Switch 官方安装包](https://github.com/farion1231/cc-switch/releases/tag/v4.0.31)
 - [Magpie 官方项目](https://github.com/yetone/magpie)
-- [Magpie 0.1.3962 官方安装包](https://github.com/yetone/magpie-releases/releases/tag/v0.1.3962)
+- [Magpie 0.1.4284 官方安装包](https://github.com/yetone/magpie-releases/releases/tag/v0.1.4284)
